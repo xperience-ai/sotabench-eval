@@ -9,7 +9,12 @@ from sotabenchapi.client import Client
 from sotabenchapi.core import BenchmarkResult, check_inputs
 import time
 
-from sotabencheval.utils import calculate_batch_hash, extract_archive, change_root_if_server, is_server
+from sotabencheval.utils import (
+    calculate_batch_hash,
+    extract_archive,
+    change_root_if_server,
+    is_server,
+)
 from sotabencheval.utils import get_max_memory_allocated
 from sotabencheval.object_detection.coco_eval import CocoEvaluator
 from sotabencheval.object_detection.utils import get_coco_metrics
@@ -42,15 +47,17 @@ class COCOEvaluator(object):
 
     task = "Object Detection"
 
-    def __init__(self,
-                 root: str = '.',
-                 split: str = "val",
-                 dataset_year: str = "2017",
-                 model_name: str = None,
-                 paper_arxiv_id: str = None,
-                 paper_pwc_id: str = None,
-                 paper_results: dict = None,
-                 model_description=None,):
+    def __init__(
+        self,
+        root: str = ".",
+        split: str = "val",
+        dataset_year: str = "2017",
+        model_name: str = None,
+        paper_arxiv_id: str = None,
+        paper_pwc_id: str = None,
+        paper_results: dict = None,
+        model_description=None,
+    ):
         """Initializes a COCO Evaluator object
 
         Args:
@@ -81,8 +88,9 @@ class COCOEvaluator(object):
                 'AP75', 'APS', 'APM', 'APL'
             model_description (str, optional): Optional model description.
         """
-        root = self.root = change_root_if_server(root=root,
-                                                 server_root="./.data/vision/coco")
+        root = self.root = change_root_if_server(
+            root=root, server_root="./.data/vision/coco"
+        )
 
         # Model metadata
 
@@ -100,7 +108,7 @@ class COCOEvaluator(object):
         self._download(annFile)
 
         self.coco = COCO(annFile)
-        self.iou_types = ['bbox']
+        self.iou_types = ["bbox"]
         self.coco_evaluator = CocoEvaluator(self.coco, self.iou_types)
 
         self.detections = []
@@ -124,21 +132,26 @@ class COCOEvaluator(object):
         :param annFile: path of the annotations file
         :return: void - extracts the archive
         """
-        if not os.path.isdir(annFile):
-            if "2017" in annFile:
-                annotations_dir_zip = os.path.join(
-                    self.root, "annotations_train%s2017.zip" % self.split
-                )
-            elif "2014" in annFile:
-                annotations_dir_zip = os.path.join(
-                    self.root, "annotations_train%s2014.zip" % self.split
-                )
-            else:
-                annotations_dir_zip = None
+        if not os.path.exists(annFile):
+            if not os.path.isdir(annFile):
+                if "2017" in annFile:
+                    annotations_dir_zip = os.path.join(
+                        self.root, "annotations_train%s2017.zip" % self.split
+                    )
+                elif "2014" in annFile:
+                    annotations_dir_zip = os.path.join(
+                        self.root, "annotations_train%s2014.zip" % self.split
+                    )
+                else:
+                    annotations_dir_zip = None
 
-            if annotations_dir_zip is not None:
-                print('Attempt to extract annotations file at {zip_loc}'.format(zip_loc=annotations_dir_zip))
-                extract_archive(from_path=annotations_dir_zip, to_path=self.root)
+                if annotations_dir_zip is not None:
+                    print(
+                        "Attempt to extract annotations file at {zip_loc}".format(
+                            zip_loc=annotations_dir_zip
+                        )
+                    )
+                    extract_archive(from_path=annotations_dir_zip, to_path=self.root)
 
     @property
     def cache_exists(self):
@@ -172,7 +185,9 @@ class COCOEvaluator(object):
         :return: bool or None (if not in check mode)
         """
         if not self.first_batch_processed:
-            raise ValueError('No batches of data have been processed so no batch_hash exists')
+            raise ValueError(
+                "No batches of data have been processed so no batch_hash exists"
+            )
 
         if not is_server():  # we only check the cache on the server
             return None
@@ -200,14 +215,14 @@ class COCOEvaluator(object):
 
         :return: ann : A detection dictionary but with rounded values
         """
-        ann['bbox'] = [np.round(el, 3) for el in ann['bbox']]
-        ann['score'] = np.round(ann['score'], 3)
+        ann["bbox"] = [np.round(el, 3) for el in ann["bbox"]]
+        ann["score"] = np.round(ann["score"], 3)
 
-        if 'segmentation' in ann:
-            ann['segmentation'] = [np.round(el, 3) for el in ann['segmentation']]
+        if "segmentation" in ann:
+            ann["segmentation"] = [np.round(el, 3) for el in ann["segmentation"]]
 
-        if 'area' in ann:
-            ann['area'] = np.round(ann['area'], 3)
+        if "area" in ann:
+            ann["area"] = np.round(ann["area"], 3)
 
         return ann
 
@@ -254,9 +269,15 @@ class COCOEvaluator(object):
             self.coco_evaluator.evaluate()
             self.coco_evaluator.accumulate()
 
-            if any([detection['bbox'] for detection in detections]): # we can only hash if we have predictions
+            if any(
+                [detection["bbox"] for detection in detections]
+            ):  # we can only hash if we have predictions
                 self.batch_hash = calculate_batch_hash(
-                    self.cache_values(annotations=detections, metrics=get_coco_metrics(self.coco_evaluator)))
+                    self.cache_values(
+                        annotations=detections,
+                        metrics=get_coco_metrics(self.coco_evaluator),
+                    )
+                )
                 self.first_batch_processed = True
 
     def get_results(self):
@@ -275,7 +296,9 @@ class COCOEvaluator(object):
         self.coco_evaluator.summarize()
 
         self.results = get_coco_metrics(self.coco_evaluator)
-        self.speed_mem_metrics['Max Memory Allocated (Total)'] = get_max_memory_allocated()
+        self.speed_mem_metrics[
+            "Max Memory Allocated (Total)"
+        ] = get_max_memory_allocated()
 
         return self.results
 
@@ -303,20 +326,22 @@ class COCOEvaluator(object):
         # If this is the first time the model is run, then we record evaluation time information
 
         if not self.cached_results:
-            unique_image_ids = set([d['image_id'] for d in self.detections])
-            exec_speed = (time.time() - self.init_time)
-            self.speed_mem_metrics['Tasks / Evaluation Time'] = len(unique_image_ids) / exec_speed
-            self.speed_mem_metrics['Tasks'] = len(unique_image_ids)
-            self.speed_mem_metrics['Evaluation Time'] = exec_speed
+            unique_image_ids = set([d["image_id"] for d in self.detections])
+            exec_speed = time.time() - self.init_time
+            self.speed_mem_metrics["Tasks / Evaluation Time"] = (
+                len(unique_image_ids) / exec_speed
+            )
+            self.speed_mem_metrics["Tasks"] = len(unique_image_ids)
+            self.speed_mem_metrics["Evaluation Time"] = exec_speed
         else:
-            self.speed_mem_metrics['Tasks / Evaluation Time'] = None
-            self.speed_mem_metrics['Tasks'] = None
-            self.speed_mem_metrics['Evaluation Time'] = None
+            self.speed_mem_metrics["Tasks / Evaluation Time"] = None
+            self.speed_mem_metrics["Tasks"] = None
+            self.speed_mem_metrics["Evaluation Time"] = None
 
         return BenchmarkResult(
             task=self.task,
             config={},
-            dataset='COCO minival',
+            dataset="COCO minival",
             results=self.results,
             speed_mem_metrics=self.speed_mem_metrics,
             model=self.model_name,
